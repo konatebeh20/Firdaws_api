@@ -4,6 +4,12 @@ Script pour ajouter la colonne password (en clair) à la table users
 et mettre à jour les utilisateurs existants
 """
 
+
+
+# 
+# 
+# 
+
 import pymysql
 
 MYSQL_CONFIG = {
