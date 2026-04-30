@@ -1,0 +1,105 @@
+===========================================
+NOUR MOSQUÉE - BACKEND FLASK RESTFUL
+===========================================
+
+📋 PRÉREQUIS :
+--------------
+1. Python 3.9+
+2. PostgreSQL 14+
+3. pip (gestionnaire de paquets)
+
+🚀 INSTALLATION :
+----------------
+1. Cloner le projet
+2. Créer un environnement virtuel :
+   python -m venv venv
+   source venv/bin/activate  (Linux/Mac)
+   venv\Scripts\activate     (Windows)
+
+3. Installer les dépendances :
+   pip install cryptography
+
+   pip install python-dotenv
+
+   python -m venv venv && pip install -r requirements.txt
+   
+   pip install -r requirements.txt
+
+4. Vérifie l'installation
+   pip list | grep cryptography
+
+5. Desactiver l'environnement
+   deactivate
+
+6. Configurer PostgreSQL :
+   - Créer une base de données : nour_firdaws_db
+   - Créer un utilisateur : nour_user
+   - Mot de passe : nour_password
+   - GRANT ALL PRIVILEGES ON DATABASE nour_firdaws_db TO nour_user;
+
+7. Lancer l'application :
+   python app.py
+
+📁 STRUCTURE DU PROJET :
+-----------------------
+backend/
+├── config/          # Configuration (constantes, DB)
+├── header/          # Décorateurs, middlewares
+├── logger/          # Logs
+├── model/           # Modèles SQLAlchemy
+├── resource/        # Routes API RESTful
+├── template/        # Frontend (HTML, CSS, JS)
+├── app.py           # Point d'entrée
+└── requirements.txt # Dépendances
+
+🔐 API ENDPOINTS :
+-----------------
+AUTH :
+POST   /api/auth/register     - Inscription admin
+POST   /api/auth/login        - Connexion
+POST   /api/auth/logout       - Déconnexion
+GET    /api/auth/profile      - Profil
+POST   /api/auth/forgot-password - Mot de passe oublié
+POST   /api/auth/reset-password  - Réinitialisation
+
+EVENTS :
+GET    /api/events            - Liste publique
+GET    /api/admin/events      - Liste admin (avec archives)
+POST   /api/events            - Créer
+PUT    /api/events/<id>       - Modifier
+DELETE /api/events/<id>       - Supprimer
+PUT    /api/events/<id>/archive - Archiver/Désarchiver
+
+VIDEOS, DOCUMENTS, INFOS, khutba :
+(même structure que events)
+
+✅ TESTS :
+---------
+1. Créer un admin : POST /api/auth/register
+   {
+     "username": "admin",
+     "email": "admin@firdaws.org",
+     "phone": "0123456789",
+     "password": "admin123"
+   }
+
+2. Se connecter : POST /api/auth/login
+   {
+     "email": "admin@firdaws.org",
+     "password": "admin123",
+     "remember_me": true
+   }
+
+3. Utiliser le token reçu dans le header Authorization: Bearer <token>
+
+⚠️ PRODUCTION :
+--------------
+1. Changer les clés secrètes dans config/constant.py
+2. Utiliser une base PostgreSQL sécurisée
+3. Configurer HTTPS
+4. Désactiver DEBUG=False
+5. Utiliser Gunicorn/nginx
+
+📞 SUPPORT :
+-----------
+Documentation complète disponible
