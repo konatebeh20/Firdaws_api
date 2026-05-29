@@ -219,8 +219,8 @@ api.add_resource(TrackerApi,
     endpoint='tracker',
     methods=['GET', 'POST', 'PUT', 'DELETE'])
 
-# CONTACT
-api.add_resource(ContactApi, '/api/contact', endpoint='contact', methods=['POST'])
+# CONTACT SUPPORT
+api.add_resource(ContactApi, '/api/support/contact', endpoint='contact', methods=['POST'])
 
 # HELPERS
 api.add_resource(SendEmail, '/helpers/send_email', endpoint='send_email', methods=['POST'])
