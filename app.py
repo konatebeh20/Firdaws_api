@@ -31,6 +31,10 @@ from resources.helpers import SendEmail, SendPush, Contact
 from resources.dons import DonsAPI
 from resources.quiz import QuizApi
 
+<<<<<<< HEAD
+=======
+from helpers.auth_helper import token_required, admin_required, superadmin_required
+>>>>>>> 4bda93c1b4226b5530e350945aec7583b717078c
 from helpers.error_helper import log_error
 
 # Logger
@@ -107,12 +111,6 @@ api.add_resource(AdminsApi,
     endpoint='admins',
     methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 
-# USERS
-api.add_resource( UsersApi, '/api/users', '/api/users/<int:item_id>', '/api/users/<string:route>', '/api/users/<string:route>/<int:item_id>', endpoint='users', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
-
-# ADMINS (pour le dashboard)
-api.add_resource(AdminsApi, '/api/admins', '/api/admins/<int:item_id>', '/api/admins/<string:route>', '/api/admins/<string:route>/<int:item_id>', endpoint='admins', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
-
 # ÉVÉNEMENTS
 api.add_resource(EventApi,
     '/api/events',
@@ -147,10 +145,10 @@ api.add_resource(QuizApi,
     endpoint='quiz',
     methods=['GET', 'POST', 'PUT', 'DELETE'])
 
-# Quiz
-api.add_resource(QuizApi, '/api/quiz', '/api/quiz/<int:quiz_id>', endpoint='quiz', methods=['GET', 'POST', 'PUT', 'DELETE'])
-api.add_resource(QuizApi, '/api/quiz/generate', endpoint='quiz_generate', methods=['POST'])
-
+api.add_resource(QuizApi,
+    '/api/quiz/generate',
+    endpoint='quiz_generate',
+    methods=['POST'])
 
 # INFORMATIONS
 api.add_resource(InfoApi,
@@ -161,7 +159,7 @@ api.add_resource(InfoApi,
     endpoint='infos',
     methods=['GET', 'POST', 'PUT', 'DELETE'])
 
-# ANNONCES (alias de /api/infos)
+# ANNONCES (alias de /api/infos pour le dashboard Angular)
 api.add_resource(InfoApi,
     '/api/annonces',
     '/api/annonces/<int:item_id>',
@@ -169,9 +167,6 @@ api.add_resource(InfoApi,
     '/api/annonces/<string:route>/<int:item_id>',
     endpoint='annonces',
     methods=['GET', 'POST', 'PUT', 'DELETE'])
-
-# ANNONCES (alias de /api/infos pour le dashboard Angular)
-api.add_resource(InfoApi, '/api/annonces', '/api/annonces/<int:item_id>', '/api/annonces/<string:route>', '/api/annonces/<string:route>/<int:item_id>', endpoint='annonces', methods=['GET', 'POST', 'PUT', 'DELETE'])
 
 # KHOTBAS
 api.add_resource(KhutbaApi,

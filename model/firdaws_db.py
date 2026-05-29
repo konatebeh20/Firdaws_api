@@ -17,7 +17,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)  # Augmenté à 255 pour accueillir les hashs bcrypt
+    password_hash = db.Column(db.String(255), nullable=False)
     first_name = db.Column(db.String(80))
     last_name = db.Column(db.String(80))
     phone = db.Column(db.String(20))
@@ -37,19 +37,13 @@ class User(db.Model):
     dons_faits = db.relationship('Dons', backref='iuser', lazy=True)
     
     def set_password(self, password):
-        """Sécurise le mot de passe en générant un hash avec bcrypt"""
         salt = bcrypt.gensalt(rounds=Config.BCRYPT_ROUNDS)
         self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
     def check_password(self, password):
-        """Vérifie si le mot de passe correspond au hash stocké"""
-        try:
-            return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
-        except Exception:
-            return False
+        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
     
     def generate_token(self):
-        """Génère un token JWT d'authentification pour l'utilisateur"""
         payload = {
             'user_id': self.id,
             'email': self.email,
@@ -99,7 +93,7 @@ class Admin(db.Model):
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
-    # Relations clés pour éviter les jointures manuelles répétitives
+    # Relations
     documents = db.relationship('Document', backref='admin_creator', lazy=True)
     quizzes = db.relationship('Quiz', backref='admin_creator', lazy=True)
     readings = db.relationship('Reading', backref='admin_creator', lazy=True)
@@ -113,10 +107,7 @@ class Admin(db.Model):
         self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
     def check_password(self, password):
-        try:
-            return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
-        except Exception:
-            return False
+        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
     
     def generate_token(self):
         payload = {
@@ -195,20 +186,20 @@ class Document(db.Model):
 
 class Quiz(db.Model):
     __tablename__ = 'quizzes'
-
+    
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
     document_title = db.Column(db.String(200))
-    questions = db.Column(db.Text, nullable=False)  # Stocké en format chaîne JSON
+    questions = db.Column(db.Text, nullable=False)
     score = db.Column(db.Integer, default=0)
     total_questions = db.Column(db.Integer, default=0)
     is_completed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
-
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -222,12 +213,12 @@ class Quiz(db.Model):
             'is_completed': self.is_completed,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
-
+    
     def save(self):
         db.session.add(self)
         db.session.commit()
         return self
-
+    
     def delete(self):
         db.session.delete(self)
         db.session.commit()
@@ -264,7 +255,7 @@ class Dons(db.Model):
             'status': self.status,
             'date': self.created_at.isoformat() if self.created_at else None
         }
-
+    
     def save(self):
         db.session.add(self)
         db.session.commit()
@@ -350,7 +341,7 @@ class Error(db.Model):
         db.session.commit()
         return self
 
-
+    
 class Info(db.Model):
     """Modèle pour les informations/annonces"""
     __tablename__ = 'informations'
@@ -363,6 +354,7 @@ class Info(db.Model):
     priority = db.Column(db.String(20), default='normal')
     publish_date = db.Column(db.DateTime)
     expire_date = db.Column(db.DateTime)
+
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
@@ -564,12 +556,12 @@ class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    video_url = db.Column(db.String(500), nullable=False)  # URL YouTube complète
-    video_id = db.Column(db.String(100))  # ID YouTube extrait de l'URL
-    thumbnail_url = db.Column(db.String(500))  # Thumbnail YouTube
+    video_url = db.Column(db.String(500), nullable=False)
+    video_id = db.Column(db.String(100))
+    thumbnail_url = db.Column(db.String(500))
     duration = db.Column(db.String(20))
-    category = db.Column(db.String(50))  # Correspond aux playlists YouTube
-    type = db.Column(db.String(50), default='khutbah')  # ENUM: khutbah, cours, rappel
+    category = db.Column(db.String(50))
+    type = db.Column(db.String(50), default='khutbah')
     view_count = db.Column(db.Integer, default=0)
     is_published = db.Column(db.Boolean, default=True)
     published_at = db.Column(db.DateTime)
@@ -585,7 +577,7 @@ class Video(db.Model):
             'description': self.description,
             'video_url': self.video_url,
             'video_id': self.video_id,
-            'thumbnail_url': self.thumbnail_url or f"https://img.youtube.com/vi/{self.video_id}/0.jpg" if self.video_id else None,
+            'thumbnail_url': self.thumbnail_url or (f"https://img.youtube.com/vi/{self.video_id}/0.jpg" if self.video_id else None),
             'duration': self.duration,
             'category': self.category,
             'type': self.type,
@@ -654,7 +646,7 @@ class FirewallLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     ip = db.Column(db.String(45), nullable=False)
     fingerprint = db.Column(db.String(64), nullable=False)
-    severity = db.Column(db.String(20), nullable=False)  # LOW, MEDIUM, HIGH, CRITICAL
+    severity = db.Column(db.String(20), nullable=False)
     attack_type = db.Column(db.String(50), nullable=False)
     details = db.Column(db.Text)
     user_agent = db.Column(db.String(500))
