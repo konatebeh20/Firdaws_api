@@ -1,168 +1,139 @@
 import bcrypt
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from datetime import timedelta
-from flask import request, jsonify
+from flask import request
 from config.db import db
-from model.flotys import *
-from werkzeug.security import check_password_hash
-
+from model.firdaws_db import Admin
+from helpers.auth_helper import AuthHelper
 
 
 def CreateAdmin():
     response = {}
+    try:
+        data = request.get_json() or {}
 
-    password_hash = request.json.get('password_hash')
-    
-    new_admin = Admin()
-    new_admin.username = request.json.get('username')
-    new_admin.password_hash = bcrypt.hashpw(password_hash.encode('utf-8'), bcrypt.gensalt())  # Assurez-vous de hacher le mot de passe
-    new_admin.email = request.json.get('email')
-    new_admin.role = request.json.get('role')
-    new_admin.status = request.json.get('status')
+        if not data.get('email') or not data.get('username'):
+            return {'status': 'error', 'error_description': 'Données incomplètes'}, 400
 
-    db.session.add(new_admin)
-    db.session.commit()
+        existing = Admin.query.filter_by(email=data.get('email')).first()
+        if existing:
+            return {'status': 'error', 'error_description': 'Email déjà utilisé'}, 409
 
-    rs = {}
-    rs['admin_id'] = new_admin.admin_id
-    rs['username'] = new_admin.username
-    rs['email'] = new_admin.email
-    rs['role'] = new_admin.role
-    rs['status'] = new_admin.status
+        new_admin = Admin(
+            username=data.get('username'),
+            email=data.get('email'),
+            phone=data.get('phone', '00000000'),
+            role=data.get('role', 'admin')
+        )
+        new_admin.set_password(data.get('password', 'changeme'))
 
-    response['status'] = 'Success'
-    response['admin_info'] = rs
+        db.session.add(new_admin)
+        db.session.commit()
 
-    return response
+        response['status'] = 'success'
+        response['admin_info'] = new_admin.to_dict()
+        return response, 201
+
+    except Exception as e:
+        db.session.rollback()
+        return {'status': 'error', 'error_description': str(e)}, 500
 
 
 def GetAllAdmin():
     response = {}
     try:
         all_admin = Admin.query.all()
-        admin_info = []
-        for admin in all_admin:
-            info_admin = {
-                'admin_id': admin.admin_id,
-                'username': admin.username,
-                'email': admin.email,
-                'role': admin.role,
-                'status': admin.status,
-            }
-            admin_info.append(info_admin)
         response['status'] = 'success'
-        response['admin'] = admin_info
-
+        response['admin'] = [admin.to_dict() for admin in all_admin]
+        return response, 200
     except Exception as e:
-        response['status'] = 'error'
-        response['error_description'] = str(e)
-
-    return response
+        return {'status': 'error', 'error_description': str(e)}, 500
 
 
 def GetSingleAdmin():
     response = {}
-
     try:
-        admin_id = request.json.get('admin_id')
-        single_admin = Admin.query.filter_by(admin_id=admin_id).first()
-        if single_admin:
-            info_admin = {
-                'admin_id': single_admin.admin_id,
-                'username': single_admin.username,
-                'email': single_admin.email,
-                'role': single_admin.role,
-                'status': single_admin.status,
-            }
+        admin_id = request.json.get('admin_id') if request.is_json else None
+        if not admin_id:
+            return {'status': 'error', 'error_description': 'ID admin manquant'}, 400
+
+        admin = Admin.query.get(admin_id)
+        if admin:
             response['status'] = 'success'
-            response['admin'] = info_admin
+            response['admin'] = admin.to_dict()
+            return response, 200
         else:
-            response['status'] = 'error'
-            response['error_description'] = 'Admin not found'
-
+            return {'status': 'error', 'error_description': 'Admin non trouvé'}, 404
     except Exception as e:
-        response['status'] = 'error'
-        response['error_description'] = str(e)
-
-    return response
+        return {'status': 'error', 'error_description': str(e)}, 500
 
 
 def UpdateAdmin():
     response = {}
-    admin_id = request.json.get('admin_id')
-    admin_to_update = Admin.query.filter_by(admin_id=admin_id).first()
-    if admin_to_update:
-        admin_to_update.username = request.json.get('username', admin_to_update.username)
-        admin_to_update.password_hash = request.json.get('password_hash', admin_to_update.password_hash)  # Hachez le mot de passe si nécessaire
-        admin_to_update.email = request.json.get('email', admin_to_update.email)
-        admin_to_update.role = request.json.get('role', admin_to_update.role)
-        admin_to_update.status = request.json.get('status', admin_to_update.status)
+    try:
+        data = request.get_json() or {}
+        admin_id = data.get('admin_id')
+        admin_to_update = Admin.query.get(admin_id)
+        if not admin_to_update:
+            return {'status': 'error', 'error_description': 'Admin non trouvé'}, 404
+
+        admin_to_update.username = data.get('username', admin_to_update.username)
+        admin_to_update.email = data.get('email', admin_to_update.email)
+        admin_to_update.role = data.get('role', admin_to_update.role)
+
+        if data.get('password'):
+            admin_to_update.set_password(data['password'])
 
         db.session.commit()
 
-        rs = {}
-        rs['admin_id'] = admin_to_update.admin_id
-        rs['username'] = admin_to_update.username
-        rs['email'] = admin_to_update.email
-        rs['role'] = admin_to_update.role
-        rs['status'] = admin_to_update.status
-
-        response['status'] = 'Success'
-        response['admin_infos'] = rs
-    else:
-        response['status'] = 'error'
-        response['error_description'] = 'Admin not found'
-
-    return response
+        response['status'] = 'success'
+        response['admin_infos'] = admin_to_update.to_dict()
+        return response, 200
+    except Exception as e:
+        db.session.rollback()
+        return {'status': 'error', 'error_description': str(e)}, 500
 
 
 def DeleteAdmin():
     response = {}
     try:
-        admin_id = request.json.get('admin_id')
-        admin_to_delete = Admin.query.filter_by(admin_id=admin_id).first()
+        data = request.get_json() if request.is_json else {}
+        admin_id = data.get('admin_id')
+        admin_to_delete = Admin.query.get(admin_id)
         if admin_to_delete:
             db.session.delete(admin_to_delete)
             db.session.commit()
             response['status'] = 'success'
+            return response, 200
         else:
-            response['status'] = 'error'
-            response['error_description'] = 'User not found'
-
+            return {'status': 'error', 'error_description': 'Admin non trouvé'}, 404
     except Exception as e:
-        response['error_description'] = str(e)
-        response['status'] = 'error'
-
-    return response
+        db.session.rollback()
+        return {'status': 'error', 'error_description': str(e)}, 500
 
 
 def LoginAdmin():
-    reponse = {}
+    response = {}
     try:
-        email = request.json.get('email')
-        password_hash = request.json.get('password_hash')
-        login_admin = Admin.query.filter_by(email=email).first()
-        admin_infos = {
-            'admin_id': login_admin.admin_id,
-            'username': login_admin.username,
-            'email': login_admin.email,  
-            'role': login_admin.role,  
-            'status': login_admin.status,              
-        }
-        if login_admin and bcrypt.checkpw(password_hash.encode('utf-8'), login_admin.password_hash.encode('utf-8')):
-            expires = timedelta(hours=1)
-            access_token = create_access_token(identity=email)
+        data = request.get_json() or {}
+        email = data.get('email')
+        password = data.get('password')
 
-            reponse['status'] = 'success'
-            reponse['admin_infos'] = admin_infos
-            reponse['access_token'] = access_token
+        admin = Admin.query.filter_by(email=email).first()
+        if not admin:
+            return {'status': 'error', 'message': 'Email ou mot de passe incorrect'}, 401
 
-        else:
-            reponse['status'] = 'error'
-            reponse['message'] = 'Invalid email or password'
+        if not admin.check_password(password):
+            return {'status': 'error', 'message': 'Email ou mot de passe incorrect'}, 401
+
+        if not admin.is_active:
+            return {'status': 'error', 'message': 'Compte désactivé'}, 403
+
+        token = admin.generate_token()
+
+        response['status'] = 'success'
+        response['admin_infos'] = admin.to_dict()
+        response['access_token'] = token
+        return response, 200
 
     except Exception as e:
-        reponse['error_description'] = str(e)
-        reponse['status'] = 'error'
-
-    return reponse
+        return {'status': 'error', 'error_description': str(e)}, 500
