@@ -15,11 +15,7 @@ class AuthApi(Resource):
     """Resource unique pour TOUS les endpoints d'authentification"""
 
     def get_current_admin(self):
-<<<<<<< HEAD
-        """R\u00e9cup\u00e8re l'admin si token pr\u00e9sent"""
-=======
         """Récupère l'admin ou user connecté via le token"""
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
@@ -70,21 +66,6 @@ class AuthApi(Resource):
                 if not ValidationHelper.validate_email(data['email']):
                     return {'message': 'Format email invalide'}, 400
 
-<<<<<<< HEAD
-                # Validation mot de passe
-                is_valid, password_errors = ValidationHelper.validate_password(data['password'])
-                if not is_valid:
-                    logger.warning(f"❌ Register failed - weak password: {password_errors}")
-                    return {'message': 'Mot de passe trop faible', 'errors': password_errors}, 400
-
-                # Vérifier si email déjà utilisé dans les utilisateurs
-                if User.query.filter_by(email=data['email']).first():
-                    logger.warning(f"❌ Register failed - email already exists: {data['email']}")
-                    return {'message': 'Cet email est déjà utilisé'}, 409
-
-                # Crée un utilisateur normal par défaut. Si un rôle admin est explicitement demandé,
-                # on pourra étendre cette logique plus tard.
-=======
                 is_valid, password_errors = ValidationHelper.validate_password(data['password'])
                 if not is_valid:
                     return {'message': 'Mot de passe trop faible', 'errors': password_errors}, 400
@@ -94,7 +75,6 @@ class AuthApi(Resource):
                 if Admin.query.filter_by(email=data['email']).first():
                     return {'message': 'Cet email est déjà utilisé'}, 409
 
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
                 user = User(
                     username=data['username'],
                     email=data['email'],
@@ -107,11 +87,7 @@ class AuthApi(Resource):
 
                 db.session.add(user)
                 db.session.commit()
-<<<<<<< HEAD
-                logger.info(f"✅ Nouvel utilisateur créé: {data['email']}")
-=======
                 logger.info(f"Nouvel utilisateur créé: {data['email']}")
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
 
                 return {'data': user.to_dict(), 'message': 'Compte créé avec succès'}, 201
 
@@ -124,28 +100,6 @@ class AuthApi(Resource):
                 if not email or not password:
                     return {'message': 'Email et mot de passe requis'}, 400
 
-<<<<<<< HEAD
-                account = User.query.filter_by(email=email).first()
-                if not account:
-                    account = Admin.query.filter_by(email=email).first()
-
-                if not account:
-                    logger.warning(f"Login failed - no account found for email: {email}")
-                    return {'message': 'Email ou mot de passe incorrect'}, 401
-
-                logger.info(f"Account found: {account.email}, checking password...")
-                if not account.check_password(password):
-                    logger.warning(f"Login failed - invalid password for: {email}")
-                    return {'message': 'Email ou mot de passe incorrect'}, 401
-
-                logger.info(f"Password valid for: {email}")
-
-                if not account.is_active:
-                    logger.warning(f"Login failed - account disabled: {email}")
-                    return {'message': 'Compte désactivé'}, 403
-
-                account.last_login = datetime.utcnow()
-=======
                 account = Admin.query.filter_by(email=email).first()
                 if not account:
                     account = User.query.filter_by(email=email).first()
@@ -162,7 +116,6 @@ class AuthApi(Resource):
                     return {'message': 'Compte désactivé'}, 403
 
                 account.last_login = datetime.now(timezone.utc)
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
                 db.session.commit()
 
                 token = account.generate_token()
