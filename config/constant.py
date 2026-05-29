@@ -36,12 +36,10 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'firdaws-super-ultra-secret
 BCRYPT_ROUNDS = 12
 
 # ========== JWT ==========
-# En développement : 24h, en production : 1h
 if FLASK_ENV == 'production':
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)   # Production: 1 heure
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
 else:
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)    # Développement: 7 jours
-
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
 # ========== PAGINATION ==========

@@ -4,6 +4,13 @@ import bcrypt
 import jwt
 import json
 from config.constant import Config
+<<<<<<< HEAD
+=======
+
+
+def get_utc_now():
+    return datetime.now(timezone.utc)
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
 
 
 def get_utc_now():
@@ -17,12 +24,19 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+<<<<<<< HEAD
     password_hash = db.Column(db.String(128), nullable=False)
     
     # first_name = db.Column(db.String(80))
     # last_name = db.Column(db.String(80))
     # phone = db.Column(db.String(20))
     
+=======
+    password_hash = db.Column(db.String(255), nullable=False)
+    first_name = db.Column(db.String(80))
+    last_name = db.Column(db.String(80))
+    phone = db.Column(db.String(20))
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     role = db.Column(db.String(20), default='user')
 
     is_active = db.Column(db.Boolean, default=True)
@@ -30,6 +44,7 @@ class User(db.Model):
 
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+<<<<<<< HEAD
     
     # Relations
     events_created = db.relationship('Event', backref='creator_user', lazy=True)
@@ -42,6 +57,12 @@ class User(db.Model):
         self.password_hash = generate_password_hash(password)
         # salt = bcrypt.gensalt()
         # self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+=======
+    
+    def set_password(self, password):
+        salt = bcrypt.gensalt(rounds=Config.BCRYPT_ROUNDS)
+        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     
     def check_password(self, password):
         # return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
@@ -53,7 +74,11 @@ class User(db.Model):
             'email': self.email,
             'username': self.username,
             'role': self.role,
+<<<<<<< HEAD
             # 'exp': get_utc_now() + Config.JWT_ACCESS_TOKEN_EXPIRES
+=======
+            'exp': get_utc_now() + Config.JWT_ACCESS_TOKEN_EXPIRES
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
         }
         # return jwt.encode(payload, Config.JWT_SECRET_KEY, algorithm='HS256')
     
@@ -87,7 +112,7 @@ class Admin(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20), nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default='admin')
     photo_url = db.Column(db.String(500), nullable=True)
 
@@ -96,6 +121,7 @@ class Admin(db.Model):
 
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+<<<<<<< HEAD
     
     # Relations clés pour éviter les jointures manuelles répétitives
     documents = db.relationship('Document', backref='admin_creator', lazy=True)
@@ -106,9 +132,10 @@ class Admin(db.Model):
     khutbas = db.relationship('Khutba', backref='admin_creator', lazy=True)
     informations = db.relationship('Info', backref='admin_creator', lazy=True)
     
+=======
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     
     def set_password(self, password):
-        """Hash le mot de passe avec bcrypt"""
         salt = bcrypt.gensalt(rounds=Config.BCRYPT_ROUNDS)
         self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
@@ -161,9 +188,12 @@ class Document(db.Model):
     archived = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
     created_at = db.Column(db.DateTime, default=get_utc_now)
+<<<<<<< HEAD
     
     # Relation : Un document parent liste ses quiz enfants
     quizzes = db.relationship('Quiz', backref='associated_document', lazy=True)
+=======
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     
     def to_dict(self):
         return {
@@ -180,6 +210,7 @@ class Document(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
+<<<<<<< HEAD
 class Quiz(db.Model):
     __tablename__ = 'quizzes'
     
@@ -201,6 +232,34 @@ class Quiz(db.Model):
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
+=======
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        return self
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
+
+class Quiz(db.Model):
+    __tablename__ = 'quizzes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    document_title = db.Column(db.String(200))
+    questions = db.Column(db.Text, nullable=False)
+    score = db.Column(db.Integer, default=0)
+    total_questions = db.Column(db.Integer, default=0)
+    is_completed = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     def to_dict(self):
         return {
             'id': self.id,
@@ -214,24 +273,39 @@ class Quiz(db.Model):
             'is_completed': self.is_completed,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     def save(self):
         db.session.add(self)
         db.session.commit()
         return self
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     def delete(self):
         db.session.delete(self)
         db.session.commit()
 
 
 class Dons(db.Model):
+<<<<<<< HEAD
     """Modèle pour la gestion des dons et de la trésorerie de la mosquée"""
     __tablename__ = "dons"
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     
+=======
+    __tablename__ = 'dons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     donor_name = db.Column(db.String(150), nullable=False)
     type = db.Column(db.String(50), default='Sadaqah', nullable=False)
     purpose = db.Column(db.String(255), nullable=True)
@@ -243,6 +317,7 @@ class Dons(db.Model):
     note = db.Column(db.Text, nullable=True)
     is_anonymous = db.Column(db.Boolean, default=False)
     status = db.Column(db.String(20), default='completed')
+<<<<<<< HEAD
 
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column( db.DateTime, default=get_utc_now, onupdate=get_utc_now)
@@ -267,6 +342,23 @@ class Dons(db.Model):
             'date': self.created_at.isoformat() if self.created_at else None
         }
     
+=======
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'donateur': self.donor_name,
+            'phone': self.phone,
+            'type': self.type,
+            'montant': self.amount,
+            'canal': self.canal,
+            'status': self.status,
+            'date': self.created_at.isoformat() if self.created_at else None
+        }
+
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     def save(self):
         db.session.add(self)
         db.session.commit()
@@ -365,7 +457,10 @@ class Info(db.Model):
     publish_date = db.Column(db.DateTime)
     expire_date  = db.Column(db.DateTime)
 
+<<<<<<< HEAD
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+=======
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
         
@@ -695,4 +790,8 @@ class BlockedIP(db.Model):
             'reason': self.reason,
             'expires_at': self.expires_at.isoformat(),
             'expires_in': str(self.expires_at - get_utc_now())
+<<<<<<< HEAD
         }
+=======
+        }
+>>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
