@@ -67,3 +67,15 @@ class VideoHelper:
             'khutba': khutba,
             'formations': formations
         }
+    
+    @staticmethod
+    def get_stats():
+        from model.firdaws_db import Video
+        from config.db import db
+        total = Video.query.count()
+        published = Video.query.filter_by(is_published=True, archived=False).count()
+        return {
+            'total': total,
+            'published': published,
+            'archived': Video.query.filter_by(archived=True).count()
+    }

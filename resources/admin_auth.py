@@ -14,13 +14,16 @@ class AuthApi(Resource):
     """Resource unique pour TOUS les endpoints d'authentification"""
     
     def get_current_admin(self):
-        """Récupère l'admin si token présent"""
+        """R\u00e9cup\u00e8re l'admin si token pr\u00e9sent"""
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
             payload = verify_token(token)
             if payload:
-                return User.query.get(payload['admin_id'])
+                if 'admin_id' in payload:
+                    return Admin.query.get(payload['admin_id'])
+                elif 'user_id' in payload:
+                    return User.query.get(payload['user_id'])
         return None
 
     # ========== GET ==========
@@ -71,39 +74,33 @@ class AuthApi(Resource):
                     return {'message': 'Format email invalide'}, 400
 
                 # Validation mot de passe
-                password_errors = ValidationHelper.validate_password(data['password'])
-                if password_errors:
-                    logger.warning(f"❌ Register failed - weak password")
+                is_valid, password_errors = ValidationHelper.validate_password(data['password'])
+                if not is_valid:
+                    logger.warning(f"❌ Register failed - weak password: {password_errors}")
                     return {'message': 'Mot de passe trop faible', 'errors': password_errors}, 400
 
-                # Vérifier si email déjà utilisé
-                if Admin.query.filter_by(email=data['email']).first():
+                # Vérifier si email déjà utilisé dans les utilisateurs
+                if User.query.filter_by(email=data['email']).first():
                     logger.warning(f"❌ Register failed - email already exists: {data['email']}")
                     return {'message': 'Cet email est déjà utilisé'}, 409
 
-                # Vérifier si c'est le premier admin (le rendre superadmin automatiquement)
-                existing_count = Admin.query.count()
-                role = 'superadmin' if existing_count == 0 else data.get('role', 'admin')
-
-                # Valider le rôle
-                valid_roles = ['superadmin', 'admin', 'commiter_organisation']
-                if role not in valid_roles:
-                    logger.warning(f"❌ Register failed - invalid role: {role}")
-                    return {'message': 'Rôle invalide'}, 400
-
-                admin = Admin(
+                # Crée un utilisateur normal par défaut. Si un rôle admin est explicitement demandé,
+                # on pourra étendre cette logique plus tard.
+                user = User(
                     username=data['username'],
                     email=data['email'],
+                    first_name=data.get('first_name'),
+                    last_name=data.get('last_name'),
                     phone=data.get('phone'),
-                    role=role
+                    role='user'
                 )
-                admin.set_password(data['password'])
+                user.set_password(data['password'])
 
-                db.session.add(admin)
+                db.session.add(user)
                 db.session.commit()
-                logger.info(f"✅ Nouvel admin créé: {data['email']} avec le rôle {role}")
+                logger.info(f"✅ Nouvel utilisateur créé: {data['email']}")
 
-                return {'data': admin.to_dict(), 'message': 'Compte créé avec succès'}, 201
+                return {'data': user.to_dict(), 'message': 'Compte créé avec succès'}, 201
 
             # 2. POST /api/auth/login
             if route == 'login':
@@ -115,33 +112,34 @@ class AuthApi(Resource):
                     logger.warning(f"Login failed - missing email or password")
                     return {'message': 'Email et mot de passe requis'}, 400
 
-                admin = User.query.filter_by(email=email, role='admin').first()
-                if not admin:
-                    logger.warning(f"Login failed - no admin found for email: {email}")
+                account = User.query.filter_by(email=email).first()
+                if not account:
+                    account = Admin.query.filter_by(email=email).first()
+
+                if not account:
+                    logger.warning(f"Login failed - no account found for email: {email}")
                     return {'message': 'Email ou mot de passe incorrect'}, 401
 
-                logger.info(f"Admin found: {admin.email}, checking password...")
-                
-                # Vérifier le mot de passe en clair (connexion normale)
-                if admin.password != password:
+                logger.info(f"Account found: {account.email}, checking password...")
+                if not account.check_password(password):
                     logger.warning(f"Login failed - invalid password for: {email}")
                     return {'message': 'Email ou mot de passe incorrect'}, 401
-                
+
                 logger.info(f"Password valid for: {email}")
 
-                if not admin.is_active:
+                if not account.is_active:
                     logger.warning(f"Login failed - account disabled: {email}")
                     return {'message': 'Compte désactivé'}, 403
 
-                admin.last_login = datetime.utcnow()
+                account.last_login = datetime.utcnow()
                 db.session.commit()
 
-                token = AuthHelper.generate_token(admin)
+                token = account.generate_token()
                 logger.info(f"Login successful for: {email}")
                 return {
                     'message': 'Connexion réussie',
                     'token': token,
-                    'admin': admin.to_dict()
+                    'user': account.to_dict()
                 }, 200
 
             # 3. POST /api/auth/logout

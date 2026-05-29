@@ -1,12 +1,14 @@
 from config.db import db
-from datetime import datetime
+from datetime import datetime, timezone
 import bcrypt
 import jwt
 import json
-from flask import current_app
-from config.constant import *
+from config.constant import Config
 
 
+def get_utc_now():
+    """Retourne la date et l'heure actuelles en UTC"""
+    return datetime.now(timezone.utc)
 
 
 class User(db.Model):
@@ -15,36 +17,45 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)  # Mot de passe en clair pour connexion normale
-    password_hash = db.Column(db.String(128), nullable=False)  # Hash pour double authentification
-    first_name = db.Column(db.String(80))
-    last_name = db.Column(db.String(80))
-    phone = db.Column(db.String(20))
+    password_hash = db.Column(db.String(128), nullable=False)
+    
+    # first_name = db.Column(db.String(80))
+    # last_name = db.Column(db.String(80))
+    # phone = db.Column(db.String(20))
+    
     role = db.Column(db.String(20), default='user')
 
     is_active = db.Column(db.Boolean, default=True)
     last_login = db.Column(db.DateTime, nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+    
+    # Relations
+    events_created = db.relationship('Event', backref='creator_user', lazy=True)
+    notifications = db.relationship('Notification', backref='user', lazy=True)
+    errors_logged = db.relationship('Error', backref='user', lazy=True)
+    mails_sent = db.relationship('Mail', backref='sender_user', lazy=True)
+    dons_faits = db.relationship('Dons', backref='iuser', lazy=True)
     
     def set_password(self, password):
-        salt = bcrypt.gensalt()
-        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        self.password_hash = generate_password_hash(password)
+        # salt = bcrypt.gensalt()
+        # self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
     def check_password(self, password):
-        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+        # return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
+        return check_password_hash(self.password_hash, password)
     
     def generate_token(self):
-        """Génère un token JWT"""
         payload = {
-            'user_id': self.id,
+            'id': self.id,
             'email': self.email,
             'username': self.username,
             'role': self.role,
-            'exp': datetime.utcnow() + Config.JWT_ACCESS_TOKEN_EXPIRES
+            # 'exp': get_utc_now() + Config.JWT_ACCESS_TOKEN_EXPIRES
         }
-        return jwt.encode(payload, Config.JWT_SECRET_KEY, algorithm='HS256')
+        # return jwt.encode(payload, Config.JWT_SECRET_KEY, algorithm='HS256')
     
     def to_dict(self):
         return {
@@ -70,7 +81,6 @@ class User(db.Model):
 
 
 class Admin(db.Model):
-    """Modèle pour les administrateurs"""
     __tablename__ = 'admins'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -84,27 +94,34 @@ class Admin(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     last_login = db.Column(db.DateTime, nullable=True)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+    
+    # Relations clés pour éviter les jointures manuelles répétitives
+    documents = db.relationship('Document', backref='admin_creator', lazy=True)
+    quizzes = db.relationship('Quiz', backref='admin_creator', lazy=True)
+    readings = db.relationship('Reading', backref='admin_creator', lazy=True)
+    trainings = db.relationship('Training', backref='admin_creator', lazy=True)
+    videos = db.relationship('Video', backref='admin_creator', lazy=True)
+    khutbas = db.relationship('Khutba', backref='admin_creator', lazy=True)
+    informations = db.relationship('Info', backref='admin_creator', lazy=True)
+    
     
     def set_password(self, password):
         """Hash le mot de passe avec bcrypt"""
         salt = bcrypt.gensalt(rounds=Config.BCRYPT_ROUNDS)
-        # salt = bcrypt.gensalt()
         self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
     def check_password(self, password):
-        """Vérifie le mot de passe"""
         return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
     
     def generate_token(self):
-        """Génère un token JWT"""
         payload = {
             'admin_id': self.id,
             'email': self.email,
             'username': self.username,
             'role': self.role,
-            'exp': datetime.utcnow() + Config.JWT_ACCESS_TOKEN_EXPIRES
+            'exp': get_utc_now() + Config.JWT_ACCESS_TOKEN_EXPIRES
         }
         return jwt.encode(payload, Config.JWT_SECRET_KEY, algorithm='HS256')
     
@@ -117,7 +134,7 @@ class Admin(db.Model):
             'role': self.role,
             'photo_url': self.photo_url,
             'created_at': self.created_at.isoformat() if self.created_at else None,
-            # 'last_login': self.last_login.isoformat() if self.last_login else None
+            'last_login': self.last_login.isoformat() if self.last_login else None
         }
     
     def save(self):
@@ -131,7 +148,6 @@ class Admin(db.Model):
 
 
 class Document(db.Model):
-    """Modèle pour les documents de formation"""
     __tablename__ = 'documents'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -144,7 +160,10 @@ class Document(db.Model):
     file_url = db.Column(db.String(500))
     archived = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    
+    # Relation : Un document parent liste ses quiz enfants
+    quizzes = db.relationship('Quiz', backref='associated_document', lazy=True)
     
     def to_dict(self):
         return {
@@ -161,9 +180,104 @@ class Document(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
+class Quiz(db.Model):
+    __tablename__ = 'quizzes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    
+    # Clés étrangères uniquement (les relations inverses sont gérées par les backrefs des parents)
+    document_id = db.Column(db.Integer, db.ForeignKey('documents.id'), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    
+    document_title = db.Column(db.String(200))
+    questions = db.Column(db.Text, nullable=False)  # Stocké en JSON
+    score = db.Column(db.Integer, default=0)
+    total_questions = db.Column(db.Integer, default=0)
+    is_completed = db.Column(db.Boolean, default=False)
+    
+    # created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'document_id': self.document_id,
+            'document_title': self.document_title,
+            'questions': json.loads(self.questions) if self.questions else [],
+            'score': self.score,
+            'total_questions': self.total_questions,
+            'is_completed': self.is_completed,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+    
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        return self
+    
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
+
+class Dons(db.Model):
+    """Modèle pour la gestion des dons et de la trésorerie de la mosquée"""
+    __tablename__ = "dons"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    donor_name = db.Column(db.String(150), nullable=False)
+    type = db.Column(db.String(50), default='Sadaqah', nullable=False)
+    purpose = db.Column(db.String(255), nullable=True)
+    amount = db.Column(db.Float, nullable=False)
+    canal = db.Column(db.String(50), default='Physique', nullable=False)
+    transaction_ref = db.Column(db.String(100), nullable=True)
+    payment_method = db.Column(db.String(100), nullable=True)
+    phone = db.Column(db.String(50), nullable=True)
+    note = db.Column(db.Text, nullable=True)
+    is_anonymous = db.Column(db.Boolean, default=False)
+    status = db.Column(db.String(20), default='completed')
+
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column( db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+
+    def to_dict(self):
+
+        return {
+            "id": self.id,
+            # 'user_id': self.user_id,
+            "donateur": self.donor_name,
+            "phone": self.phone,
+            'type': self.type,
+            "montant": self.amount,
+            'canal': self.canal,
+            # "purpose": self.purpose,
+            # "payment_method": self.payment_method,
+            'status': self.status,
+            # "note": self.note,
+            # 'transaction_ref': self.transaction_ref,
+            # "is_anonymous": self.is_anonymous,
+            # "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            'date': self.created_at.isoformat() if self.created_at else None
+        }
+    
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        return self
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
 
 class Event(db.Model):
-    """Modèle pour les événements"""
     __tablename__ = 'events'
     
     id = db.Column(db.Integer, primary_key=True)
@@ -178,8 +292,8 @@ class Event(db.Model):
     max_participants = db.Column(db.Integer)
     current_participants = db.Column(db.Integer, default=0)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
     def to_dict(self):
         return {
@@ -206,7 +320,7 @@ class Event(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-
+        
 
 class Error(db.Model):
     __tablename__ = 'errors'
@@ -220,7 +334,7 @@ class Error(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.String(500))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     
     def to_dict(self):
         return {
@@ -237,33 +351,35 @@ class Error(db.Model):
         db.session.add(self)
         db.session.commit()
         return self
-
-
+    
 class Info(db.Model):
     """Modèle pour les informations/annonces"""
-    __tablename__ = 'infos'
+    __tablename__ = 'informations'
     
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    category = db.Column(db.String(50))
-    is_published = db.Column(db.Boolean, default=True)
-    archived = db.Column(db.Boolean, default=False)
-    
-    published_at = db.Column(db.DateTime)
-    created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    content = db.Column(db.Text, nullable=False) 
+    status = db.Column(db.String(20), default='published')
+    type = db.Column(db.String(50))
+    priority    = db.Column(db.String(20), default='normal')
+    publish_date = db.Column(db.DateTime)
+    expire_date  = db.Column(db.DateTime)
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
         
     def to_dict(self):
         return {
             'id': self.id,
             'title': self.title,
             'content': self.content,
-            'category': self.category,
-            'is_published': self.is_published,
-            'archived': self.archived,
+            'priority': self.priority,
+            'status': self.status,
+            'category': self.priority,
+            'is_published': self.status == 'published',
+            'archived': self.status == 'archived',
+            'publish_date': self.publish_date.isoformat() if self.publish_date else None,
             'published_at': self.published_at.isoformat() if self.published_at else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
@@ -276,7 +392,7 @@ class Info(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-
+    
 
 class Mail(db.Model):
     __tablename__ = 'mails'
@@ -289,7 +405,7 @@ class Mail(db.Model):
     sent_at = db.Column(db.DateTime)
     error_message = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     
     def to_dict(self):
         return {
@@ -318,7 +434,7 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     read_at = db.Column(db.DateTime)
     link = db.Column(db.String(500))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     
     def to_dict(self):
         return {
@@ -340,9 +456,9 @@ class Notification(db.Model):
     
     def mark_as_read(self):
         self.is_read = True
-        self.read_at = datetime.utcnow()
+        self.read_at = get_utc_now()
         self.save()
-
+    
 
 class Reading(db.Model):
     __tablename__ = 'readings'
@@ -359,8 +475,8 @@ class Reading(db.Model):
     is_published = db.Column(db.Boolean, default=True)
     published_at = db.Column(db.DateTime)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
     def to_dict(self):
         return {
@@ -390,8 +506,8 @@ class Reading(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-
-
+    
+    
 class Training(db.Model):
     __tablename__ = 'trainings'
     
@@ -411,8 +527,8 @@ class Training(db.Model):
     image_url = db.Column(db.String(500))
     is_active = db.Column(db.Boolean, default=True)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
     def to_dict(self):
         return {
@@ -462,8 +578,8 @@ class Video(db.Model):
     published_at = db.Column(db.DateTime)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
     archived = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
     def to_dict(self):
         return {
@@ -496,8 +612,7 @@ class Video(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-
-
+    
 
 class Khutba(db.Model):
     """Modèle pour les khutba texte"""
@@ -510,7 +625,7 @@ class Khutba(db.Model):
     content = db.Column(db.Text)
     archived = db.Column(db.Boolean, default=False)
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     
     def to_dict(self):
         return {
@@ -531,7 +646,7 @@ class ResetToken(db.Model):
     token = db.Column(db.String(500), unique=True, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
 
 class FirewallLog(db.Model):
     """Logs du pare-feu et tentatives d'intrusion"""
@@ -546,7 +661,7 @@ class FirewallLog(db.Model):
     user_agent = db.Column(db.String(500))
     path = db.Column(db.String(500))
     method = db.Column(db.String(10))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     
     def to_dict(self):
         return {
@@ -571,7 +686,7 @@ class BlockedIP(db.Model):
     fingerprint = db.Column(db.String(64))
     reason = db.Column(db.String(500))
     expires_at = db.Column(db.DateTime, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=get_utc_now)
     
     def to_dict(self):
         return {
@@ -579,5 +694,5 @@ class BlockedIP(db.Model):
             'ip': self.ip,
             'reason': self.reason,
             'expires_at': self.expires_at.isoformat(),
-            'expires_in': str(self.expires_at - datetime.utcnow())
+            'expires_in': str(self.expires_at - get_utc_now())
         }

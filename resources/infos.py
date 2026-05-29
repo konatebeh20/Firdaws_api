@@ -20,12 +20,13 @@ class InfoApi(Resource):
             token = auth_header.split(' ')[1]
             payload = verify_token(token)
             if payload:
-                return Admin.query.get(payload['admin_id'])
+                admin_id = payload.get('admin_id')
+                if admin_id:
+                    return Admin.query.get(admin_id)
         return None
 
     # ========== GET ==========
     def get(self, route=None, item_id=None):
-        """Route GET dynamique unique"""
         try:
             current_admin = self.get_current_admin()
             
@@ -40,12 +41,12 @@ class InfoApi(Resource):
             if route == 'admin':
                 if not current_admin:
                     return {'message': 'Authentification requise'}, 401
-                infos = Info.query.order_by(Info.archived, Info.created_at.desc()).all()
+                infos = Info.query.order_by(Info.created_at.desc()).all()
                 return {
                     'data': [i.to_dict() for i in infos],
                     'total': len(infos),
-                    'active': len([i for i in infos if not i.archived]),
-                    'archived': len([i for i in infos if i.archived])
+                    'active': len([i for i in infos if i.status != 'archived']),
+                    'archived': len([i for i in infos if i.status == 'archived'])
                 }, 200
 
             # 3. GET /api/infos (par défaut)
@@ -56,7 +57,10 @@ class InfoApi(Resource):
             if include_archived:
                 query = Info.query.order_by(Info.created_at.desc())
             else:
-                query = Info.query.filter_by(archived=False).order_by(Info.created_at.desc())
+                query = Info.query.filter(
+                    Info.status.in_(['published', 'draft'])
+                ).order_by(Info.created_at.desc())
+            
             result = PaginationHelper.paginate(query, page, per_page)
             
             return {
@@ -67,85 +71,62 @@ class InfoApi(Resource):
         except Exception as e:
             log_error(e, request, 'InfoApi.get')
             return {'message': 'Erreur lors de la récupération'}, 500
-
+    
     # ========== POST ==========
-    @admin_required
-    def post(self, current_admin, route=None, item_id=None):
-        """Route POST dynamique unique"""
+    def post(self, route=None, item_id=None):
         try:
             data = request.get_json()
-            
-            # Validation
             errors = InfoHelper.validate_data(data)
             if errors:
                 return {'message': 'Erreur de validation', 'errors': errors}, 400
-            
-            info_data = InfoHelper.prepare_data(data, current_admin.id)
+            current_admin = self.get_current_admin()
+            admin_id = current_admin.id if current_admin else 1
+            info_data = InfoHelper.prepare_data(data, admin_id)
             info = Info(**info_data)
-            
             db.session.add(info)
             db.session.commit()
-            
-            logger.info(f"✅ Information ajoutée: {info.title}")
             return {'data': info.to_dict()}, 201
-            
         except Exception as e:
-            log_error(e, request, 'InfoApi.post')
             db.session.rollback()
-            return {'message': 'Erreur lors de l\'ajout'}, 500
+            return {'message': str(e)}, 500
 
     # ========== PUT ==========
-    @admin_required
-    def put(self, current_admin, route=None, item_id=None):
-        """Route PUT dynamique unique"""
+    def put(self, route=None, item_id=None):
         try:
             if not item_id:
                 return {'message': 'ID manquant'}, 400
-            
             info = Info.query.get(item_id)
             if not info:
                 return {'message': 'Information non trouvée'}, 404
-            
             data = request.get_json()
-            
-            # 1. Archive / Désarchive
             if route == 'archive':
-                info.archived = data.get('archived', True)
+                info.status = 'archived' if data.get('archived', True) else 'published'
             else:
-                # 2. Mise à jour classique
-                fields = ['title', 'content', 'category', 'is_published']
-                for field in fields:
-                    if field in data:
-                        setattr(info, field, data[field])
-            
+                if 'title' in data:
+                    info.title = data['title']
+                if 'content' in data:
+                    info.content = data['content']
+                if 'category' in data:
+                    info.priority = data['category']
+                if 'is_published' in data:
+                    info.status = 'published' if data['is_published'] else 'draft'
             db.session.commit()
-            logger.info(f"✅ Information mise à jour: {info.title}")
             return {'data': info.to_dict()}, 200
-            
         except Exception as e:
-            log_error(e, request, 'InfoApi.put')
             db.session.rollback()
-            return {'message': 'Erreur lors de la modification'}, 500
+            return {'message': str(e)}, 500
 
     # ========== DELETE ==========
-    @admin_required
-    def delete(self, current_admin, route=None, item_id=None):
-        """Route DELETE dynamique unique"""
+    def delete(self, route=None, item_id=None):
         try:
             if not item_id:
                 return {'message': 'ID manquant'}, 400
-                
             info = Info.query.get(item_id)
             if not info:
                 return {'message': 'Information non trouvée'}, 404
-            
             db.session.delete(info)
             db.session.commit()
-            
-            logger.info(f"✅ Information supprimée: {info.title}")
             return {'data': {'message': 'Information supprimée', 'id': item_id}}, 200
-            
         except Exception as e:
-            log_error(e, request, 'InfoApi.delete')
             db.session.rollback()
-            return {'message': 'Erreur lors de la suppression'}, 500
+            return {'message': str(e)}, 500

@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+import io
 from datetime import datetime
 
 # Créer le dossier logs s'il n'existe pas
@@ -17,12 +19,14 @@ formatter = logging.Formatter(
 )
 
 # Handler pour fichier
-file_handler = logging.FileHandler(f'logs/nour_firdaws_{datetime.now().strftime("%Y%m%d")}.log')
+file_handler = logging.FileHandler(f'logs/nour_firdaws_{datetime.now().strftime("%Y%m%d")}.log', encoding='utf-8')
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 # Handler pour console
-console_handler = logging.StreamHandler()
+# Forcer l'encodage UTF-8 sur la sortie console pour éviter les erreurs d'encodage sous Windows
+console_stream = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='backslashreplace')
+console_handler = logging.StreamHandler(stream=console_stream)
 console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(formatter)
 

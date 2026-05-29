@@ -38,9 +38,15 @@ from resources.tracker import TrackerApi
 from resources.contact import ContactApi
 from resources.helpers import SendEmail, SendPush, Contact
 
+from resources.users import UsersApi
+from resources.admin import AdminsApi
+from resources.dons import DonsAPI
+
+from resources.quiz import QuizApi
+
+
 from helpers.auth_helper import token_required, admin_required, superadmin_required
 from helpers.error_helper import log_error
-# from helpers.errors import log_error
 
 
 # Logger
@@ -81,6 +87,10 @@ CORS(app, resources={
 db.init_app(app)
 migrate = Migrate(app, db)
 
+with app.app_context():
+    db.create_all()
+    print("✅ Tables vérifiées / créées")
+
 CORS(app)
 
 
@@ -109,6 +119,12 @@ app.extensions['socketio'] = socketio
 # AUTHENTIFICATION
 api.add_resource(AuthApi,  '/api/auth/<string:route>', '/api/auth/<string:route>/<int:item_id>', endpoint='auth', methods=['GET', 'POST', 'PUT', 'DELETE'])
 
+# USERS
+api.add_resource( UsersApi, '/api/users', '/api/users/<int:item_id>', '/api/users/<string:route>', '/api/users/<string:route>/<int:item_id>', endpoint='users', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+
+# ADMINS (pour le dashboard)
+api.add_resource(AdminsApi, '/api/admins', '/api/admins/<int:item_id>', '/api/admins/<string:route>', '/api/admins/<string:route>/<int:item_id>', endpoint='admins', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+
 # ÉVÉNEMENTS
 api.add_resource(EventApi, '/api/events', '/api/events/<int:item_id>', '/api/events/<string:route>', '/api/events/<string:route>/<int:item_id>', endpoint='events', methods=['GET', 'POST', 'PUT', 'DELETE'])
 
@@ -118,8 +134,16 @@ api.add_resource(VideoApi, '/api/videos', '/api/videos/<int:item_id>', '/api/vid
 # DOCUMENTS
 api.add_resource(DocumentApi, '/api/documents', '/api/documents/<int:item_id>', '/api/documents/<string:route>', '/api/documents/<string:route>/<int:item_id>', endpoint='documents', methods=['GET', 'POST', 'PUT', 'DELETE'])
 
+# Quiz
+api.add_resource(QuizApi, '/api/quiz', '/api/quiz/<int:quiz_id>', endpoint='quiz', methods=['GET', 'POST', 'PUT', 'DELETE'])
+api.add_resource(QuizApi, '/api/quiz/generate', endpoint='quiz_generate', methods=['POST'])
+
+
 # INFORMATIONS
 api.add_resource(InfoApi, '/api/infos', '/api/infos/<int:item_id>', '/api/infos/<string:route>', '/api/infos/<string:route>/<int:item_id>', endpoint='infos', methods=['GET', 'POST', 'PUT', 'DELETE'])
+
+# ANNONCES (alias de /api/infos pour le dashboard Angular)
+api.add_resource(InfoApi, '/api/annonces', '/api/annonces/<int:item_id>', '/api/annonces/<string:route>', '/api/annonces/<string:route>/<int:item_id>', endpoint='annonces', methods=['GET', 'POST', 'PUT', 'DELETE'])
 
 # KHOTBAS
 api.add_resource(KhutbaApi, '/api/khotbas', '/api/khotbas/<int:item_id>', '/api/khotbas/<string:route>', '/api/khotbas/<string:route>/<int:item_id>', endpoint='khotbas', methods=['GET', 'POST', 'PUT', 'DELETE'])
@@ -136,20 +160,12 @@ api.add_resource(ValidationApi, '/api/validate', '/api/validate/<string:route>',
 # PAGINATION
 api.add_resource(PaginationApi, '/api/pagination', '/api/pagination/<string:route>', endpoint='pagination', methods=['GET'])
 
-# ERREURS
-#User TrackerApi
-api.add_resource(ErrorsApi, '/api/<string:route>', endpoint='errors_all', methods=["GET","POST"])
-api.add_resource(ErrorsApi, '/api/<string:route>', endpoint='errors_all_patch', methods=["PATCH","DELETE"])
-
+# ERREURS -User TrackerApi
 api.add_resource(ErrorsApi, '/api/errors', '/api/errors/<string:route>', '/api/errors/<string:route>/<int:item_id>', endpoint='errors', methods=['GET', 'POST', 'DELETE'])
-# api.add_resource(ErrorsApi, '/api/errors', '/api/errors/<string:route>', '/api/errors/<string:route>/<int:item_id>', endpoint='errors', methods=['GET', 'POST', 'DELETE'])
 
 # TRACKER
 #User Project
 api.add_resource(TrackerApi, '/api/tracker/<string:route>', '/api/tracker/<string:route>/<int:item_id>', endpoint='tracker', methods=['GET', 'POST', 'PUT', 'DELETE'])
-# api.add_resource(TrackerApi, '/api/projects/<string:route>', endpoint='projects_all', methods=["GET","POST"])
-# api.add_resource(TrackerApi, '/api/projects/<string:route>', endpoint='projects_all_patch', methods=["PATCH","DELETE"])
-
 
 # CONTACT
 api.add_resource(ContactApi, '/api/contact', endpoint='contact', methods=['POST'])
@@ -164,6 +180,11 @@ api.add_resource(Contact, '/api/contact_simple', endpoint='contact_simple', meth
 #User Auth
 api.add_resource(AuthApi, '/api/auth/<string:route>', endpoint='auth_all', methods=["GET","POST"])
 api.add_resource(AuthApi, '/api/auth/<string:route>', endpoint='auth_all_patch', methods=["PATCH","DELETE"])
+
+# DONS
+api.add_resource(DonsAPI, '/api/dons', '/api/dons/<int:item_id>', '/api/dons/<string:route>', '/api/dons/<string:route>/<int:item_id>', endpoint='dons', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+
+
 
 # ========== ROUTES FRONTEND ==========
 @app.route(BASE_URL + '/')
@@ -291,7 +312,7 @@ def seed_default_admins():
 if __name__ == '__main__':
     with app.app_context():
         # db.create_all()
-        # seed_default_admins()
+        seed_default_admins()
         logger.info("Base de données initialisée")
 
     logger.info("Démarrage de Firdaws API avec WebSockets")

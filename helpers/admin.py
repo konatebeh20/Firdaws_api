@@ -1,9 +1,9 @@
 import bcrypt
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+# from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from datetime import timedelta
 from flask import request, jsonify
 from config.db import db
-from model.flotys import *
+from model.firdaws_db import *
 from werkzeug.security import check_password_hash
 
 
@@ -11,24 +11,24 @@ from werkzeug.security import check_password_hash
 def CreateAdmin():
     response = {}
 
-    password_hash = request.json.get('password_hash')
+    password = request.json.get('password')
     
     new_admin = Admin()
     new_admin.username = request.json.get('username')
-    new_admin.password_hash = bcrypt.hashpw(password_hash.encode('utf-8'), bcrypt.gensalt())  # Assurez-vous de hacher le mot de passe
     new_admin.email = request.json.get('email')
-    new_admin.role = request.json.get('role')
-    new_admin.status = request.json.get('status')
+    new_admin.phone = request.json.get('phone', '00000000')
+    new_admin.role = request.json.get('role', 'admin')
+    new_admin.set_password(password)
 
     db.session.add(new_admin)
     db.session.commit()
 
     rs = {}
-    rs['admin_id'] = new_admin.admin_id
+    rs['admin_id'] = new_admin.id
     rs['username'] = new_admin.username
     rs['email'] = new_admin.email
     rs['role'] = new_admin.role
-    rs['status'] = new_admin.status
+    rs['status'] = 'active' if new_admin.is_active else 'inactive'
 
     response['status'] = 'Success'
     response['admin_info'] = rs
@@ -43,11 +43,11 @@ def GetAllAdmin():
         admin_info = []
         for admin in all_admin:
             info_admin = {
-                'admin_id': admin.admin_id,
+                'admin_id': admin.id,
                 'username': admin.username,
                 'email': admin.email,
                 'role': admin.role,
-                'status': admin.status,
+                'status': 'active' if admin.is_active else 'inactive',
             }
             admin_info.append(info_admin)
         response['status'] = 'success'
@@ -65,14 +65,14 @@ def GetSingleAdmin():
 
     try:
         admin_id = request.json.get('admin_id')
-        single_admin = Admin.query.filter_by(admin_id=admin_id).first()
+        single_admin = Admin.query.filter_by(id=admin_id).first()
         if single_admin:
             info_admin = {
-                'admin_id': single_admin.admin_id,
+                'admin_id': single_admin.id,
                 'username': single_admin.username,
                 'email': single_admin.email,
                 'role': single_admin.role,
-                'status': single_admin.status,
+                'status': 'active' if single_admin.is_active else 'inactive',
             }
             response['status'] = 'success'
             response['admin'] = info_admin
@@ -90,22 +90,24 @@ def GetSingleAdmin():
 def UpdateAdmin():
     response = {}
     admin_id = request.json.get('admin_id')
-    admin_to_update = Admin.query.filter_by(admin_id=admin_id).first()
+    admin_to_update = Admin.query.filter_by(id=admin_id).first()
     if admin_to_update:
         admin_to_update.username = request.json.get('username', admin_to_update.username)
-        admin_to_update.password_hash = request.json.get('password_hash', admin_to_update.password_hash)  # Hachez le mot de passe si nécessaire
         admin_to_update.email = request.json.get('email', admin_to_update.email)
         admin_to_update.role = request.json.get('role', admin_to_update.role)
-        admin_to_update.status = request.json.get('status', admin_to_update.status)
+        admin_to_update.phone = request.json.get('phone', admin_to_update.phone)
+        
+        if request.json.get('password'):
+            admin_to_update.set_password(request.json.get('password'))
 
         db.session.commit()
 
         rs = {}
-        rs['admin_id'] = admin_to_update.admin_id
+        rs['admin_id'] = admin_to_update.id
         rs['username'] = admin_to_update.username
         rs['email'] = admin_to_update.email
         rs['role'] = admin_to_update.role
-        rs['status'] = admin_to_update.status
+        rs['status'] = 'active' if admin_to_update.is_active else 'inactive'
 
         response['status'] = 'Success'
         response['admin_infos'] = rs
@@ -120,7 +122,7 @@ def DeleteAdmin():
     response = {}
     try:
         admin_id = request.json.get('admin_id')
-        admin_to_delete = Admin.query.filter_by(admin_id=admin_id).first()
+        admin_to_delete = Admin.query.filter_by(id=admin_id).first()
         if admin_to_delete:
             db.session.delete(admin_to_delete)
             db.session.commit()
@@ -140,22 +142,25 @@ def LoginAdmin():
     reponse = {}
     try:
         email = request.json.get('email')
-        password_hash = request.json.get('password_hash')
+        password = request.json.get('password')
         login_admin = Admin.query.filter_by(email=email).first()
-        admin_infos = {
-            'admin_id': login_admin.admin_id,
-            'username': login_admin.username,
-            'email': login_admin.email,  
-            'role': login_admin.role,  
-            'status': login_admin.status,              
-        }
-        if login_admin and bcrypt.checkpw(password_hash.encode('utf-8'), login_admin.password_hash.encode('utf-8')):
-            expires = timedelta(hours=1)
-            access_token = create_access_token(identity=email)
+
+        
+        if login_admin and login_admin.check_password(password):
+            admin_infos = {
+                'admin_id': login_admin.id,
+                'username': login_admin.username,
+                'email': login_admin.email,  
+                'role': login_admin.role,  
+                'status': 'active' if login_admin.is_active else 'inactive',              
+            }
+
+            # Use the new JWT system from the model
+            token = login_admin.generate_token()
 
             reponse['status'] = 'success'
             reponse['admin_infos'] = admin_infos
-            reponse['access_token'] = access_token
+            reponse['access_token'] = token
 
         else:
             reponse['status'] = 'error'

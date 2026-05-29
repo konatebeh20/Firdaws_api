@@ -35,7 +35,7 @@ class ErrorHelper:
             })
         
         # Log dans le fichier d'erreurs
-        error_logger.error(f"❌ {error_details['error_type']}: {error_details['message']}")
+        error_logger.error(f"ERROR {error_details['error_type']}: {error_details['message']}")
         
         # Log détaillé
         logger.debug(f"Traceback: {error_details['traceback']}")
