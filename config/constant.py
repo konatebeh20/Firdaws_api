@@ -31,12 +31,15 @@ MAIL_USERNAME = SMTP_USERNAME
 MAIL_PASSWORD = SMTP_PASSWORD
 
 # ========== SÉCURITÉ ==========
-SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-firdaws'
-JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'dev-jwt-secret-key-firdaws'
+SECRET_KEY = os.environ.get('SECRET_KEY') or 'firdaws-super-ultra-secret-app-key-2026-secure'
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'firdaws-super-ultra-secret-jwt-key-2026-secure'
 BCRYPT_ROUNDS = 12
 
 # ========== JWT ==========
-JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+if FLASK_ENV == 'production':
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+else:
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(days=7)
 JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
 # ========== PAGINATION ==========
