@@ -14,8 +14,9 @@ from helpers.honeypot_helper import HoneypotHelper
 from helpers.backlog_helper import BacklogHelper
 from helpers.error_helper import log_error
 
+from sqlalchemy import func
 from model.firdaws_db import (
-    Event, Video, Document, Info, Khutba, Admin,
+    Event, Video, Document, Info, Khutba, Admin, User, Dons,
     FirewallLog, BlockedIP
 )
 
@@ -143,7 +144,19 @@ class TrackerApi(Resource):
     def get_dashboard_stats(self):
         """Stats complètes pour le dashboard admin"""
         try:
+            donations_total = db.session.query(
+                func.sum(Dons.amount)
+            ).filter(Dons.status == 'completed').scalar() or 0
+
             stats = {
+                'fideles': {
+                    'total': User.query.count(),
+                    'active': User.query.filter_by(is_active=True).count()
+                },
+                'donations': {
+                    'total': float(donations_total),
+                    'count': Dons.query.count()
+                },
                 'admins': {
                     'total': Admin.query.count(),
                     'active': Admin.query.filter_by(is_active=True).count(),
@@ -151,11 +164,11 @@ class TrackerApi(Resource):
                 },
                 'events': {
                     'total': Event.query.count(),
-                    'active': Event.query.filter_by(archived=False).count(),
-                    'archived': Event.query.filter_by(archived=True).count(),
+                    'active': Event.query.filter_by(status='published').count(),
+                    'archived': Event.query.filter_by(status='cancelled').count(),
                     'upcoming': Event.query.filter(
-                        Event.date >= datetime.now().date(),
-                        Event.archived == False
+                        Event.event_date >= datetime.now(),
+                        Event.status == 'published'
                     ).count()
                 },
                 'videos': {
@@ -172,8 +185,8 @@ class TrackerApi(Resource):
                 },
                 'infos': {
                     'total': Info.query.count(),
-                    'active': Info.query.filter_by(archived=False).count(),
-                    'archived': Info.query.filter_by(archived=True).count()
+                    'active': Info.query.filter_by(status='published').count(),
+                    'archived': Info.query.filter_by(status='archived').count()
                 },
                 'khotbas': {
                     'total': Khutba.query.count(),
