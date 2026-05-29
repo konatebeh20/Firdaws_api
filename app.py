@@ -31,20 +31,7 @@ from resources.helpers import SendEmail, SendPush, Contact
 from resources.dons import DonsAPI
 from resources.quiz import QuizApi
 
-<<<<<<< HEAD
-from resources.users import UsersApi
-from resources.admin import AdminsApi
-from resources.dons import DonsAPI
-
-from resources.quiz import QuizApi
-
-
-from helpers.auth_helper import token_required, admin_required, superadmin_required
 from helpers.error_helper import log_error
-
-=======
-from helpers.error_helper import log_error
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
 
 # Logger
 logger = get_logger()
@@ -77,15 +64,7 @@ migrate = Migrate(app, db)
 
 with app.app_context():
     db.create_all()
-<<<<<<< HEAD
-    print("✅ Tables vérifiées / créées")
-
-CORS(app)
-
-
-=======
     print("Tables vérifiées / créées")
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
 
 # API Restful
 api = Api(app)
@@ -232,14 +211,6 @@ api.add_resource(PaginationApi,
     endpoint='pagination',
     methods=['GET'])
 
-<<<<<<< HEAD
-# ERREURS -User TrackerApi
-api.add_resource(ErrorsApi, '/api/errors', '/api/errors/<string:route>', '/api/errors/<string:route>/<int:item_id>', endpoint='errors', methods=['GET', 'POST', 'DELETE'])
-
-# TRACKER
-#User Project
-api.add_resource(TrackerApi, '/api/tracker/<string:route>', '/api/tracker/<string:route>/<int:item_id>', endpoint='tracker', methods=['GET', 'POST', 'PUT', 'DELETE'])
-=======
 # ERREURS
 api.add_resource(ErrorsApi,
     '/api/errors',
@@ -254,7 +225,6 @@ api.add_resource(TrackerApi,
     '/api/tracker/<string:route>/<int:item_id>',
     endpoint='tracker',
     methods=['GET', 'POST', 'PUT', 'DELETE'])
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
 
 # CONTACT
 api.add_resource(ContactApi, '/api/contact', endpoint='contact', methods=['POST'])
@@ -274,18 +244,6 @@ api.add_resource(DonsAPI,
     methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 
 
-<<<<<<< HEAD
-#User Auth
-api.add_resource(AuthApi, '/api/auth/<string:route>', endpoint='auth_all', methods=["GET","POST"])
-api.add_resource(AuthApi, '/api/auth/<string:route>', endpoint='auth_all_patch', methods=["PATCH","DELETE"])
-
-# DONS
-api.add_resource(DonsAPI, '/api/dons', '/api/dons/<int:item_id>', '/api/dons/<string:route>', '/api/dons/<string:route>/<int:item_id>', endpoint='dons', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
-
-
-
-=======
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
 # ========== ROUTES FRONTEND ==========
 @app.route(BASE_URL + '/')
 @app.route(BASE_URL + '/<path:path>')
@@ -367,10 +325,6 @@ def seed_default_admins():
 
 if __name__ == '__main__':
     with app.app_context():
-<<<<<<< HEAD
-        # db.create_all()
-=======
->>>>>>> 8c5c6fa7d104168d47c468287bfbccfb3bfe0309
         seed_default_admins()
         logger.info("Base de données initialisée")
 
