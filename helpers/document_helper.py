@@ -58,13 +58,9 @@ class DocumentHelper:
         
 
     @staticmethod
-    def prepare_data(data: dict, admin_id: int) -> dict:
-        """
-        Prépare structurellement le dictionnaire final prêt à être injecté 
-        dans l'instanciation de ton modèle Document SQLALchemy.
-        """
-        
-        ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'PDF'
+    def prepare_data(data: dict, filename: str, size_bytes: int, file_url: str, admin_id: int) -> dict:
+        """Prépare les données du document pour l'insertion en base"""
+        ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'pdf'
         
         return {
             'title': data.get('title', '').strip(),
@@ -76,6 +72,25 @@ class DocumentHelper:
             'file_url': file_url,
             'created_by': admin_id,
         }
+
+    # def prepare_data(data: dict, admin_id: int) -> dict:
+    #     """
+    #     Prépare structurellement le dictionnaire final prêt à être injecté 
+    #     dans l'instanciation de ton modèle Document SQLALchemy.
+    #     """
+        
+    #     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'PDF'
+        
+    #     return {
+    #         'title': data.get('title', '').strip(),
+    #         'description': data.get('description', '').strip(),
+    #         'author': data.get('author', 'Anonyme').strip(),
+    #         'type': ext.upper(),
+    #         'icon': DocumentHelper.get_file_icon(filename),
+    #         'file_size': DocumentHelper.format_file_size(size_bytes),
+    #         'file_url': file_url,
+    #         'created_by': admin_id,
+    #     }
         
 
     @staticmethod

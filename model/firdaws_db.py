@@ -8,7 +8,8 @@ from config.constant import Config
 
 def get_utc_now():
     """Retourne la date et l'heure actuelles en UTC"""
-    return datetime.now(timezone.utc)
+    # return datetime.now(timezone.utc)
+    return datetime.utcnow()
 
 
 class User(db.Model):
@@ -30,7 +31,9 @@ class User(db.Model):
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
     # Relations
-    events_created = db.relationship('Event', backref='creator_user', lazy=True)
+    # events_created = db.relationship('Event', backref='creator_user', lazy=True)
+    # created_by = db.Column(db.Integer, nullable=True)
+
     notifications = db.relationship('Notification', backref='user', lazy=True)
     errors_logged = db.relationship('Error', backref='user', lazy=True)
     mails_sent = db.relationship('Mail', backref='sender_user', lazy=True)
@@ -94,7 +97,7 @@ class Admin(db.Model):
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
     # Relations
-    documents = db.relationship('Document', backref='admin_creator', lazy=True)
+    # documents = db.relationship('Document', backref='admin_creator', lazy=True)
     quizzes = db.relationship('Quiz', backref='admin_creator', lazy=True)
     readings = db.relationship('Reading', backref='admin_creator', lazy=True)
     trainings = db.relationship('Training', backref='admin_creator', lazy=True)
@@ -153,11 +156,13 @@ class Document(db.Model):
     file_size = db.Column(db.String(20))
     file_url = db.Column(db.String(500))
     archived = db.Column(db.Boolean, default=False)
+
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
     created_at = db.Column(db.DateTime, default=get_utc_now)
     
     # Relation : Un document parent liste ses quiz enfants
-    quizzes = db.relationship('Quiz', backref='associated_document', lazy=True)
+    created_by = db.Column(db.Integer, nullable=True)
+    # quizzes = db.relationship('Quiz', backref='associated_document', lazy=True)
     
     def to_dict(self):
         return {
@@ -272,15 +277,25 @@ class Event(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    event_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime)
-    location = db.Column(db.String(200))
-    category = db.Column(db.String(50))
-    status = db.Column(db.String(20), default='published')
+    
+    date = db.Column(db.Date, nullable=False) 
+    time = db.Column(db.String(10), default='00:00')
+    
+    location = db.Column(db.String(200), default='Mosquée')
+    imam = db.Column(db.String(100))
+    type = db.Column(db.String(50), default='Événement')
+    archived = db.Column(db.Boolean, default=False)
+    
     image_url = db.Column(db.String(500))
-    max_participants = db.Column(db.Integer)
+    max_participants = db.Column(db.Integer, nullable=True)
     current_participants = db.Column(db.Integer, default=0)
-    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    
+    # CORRECTION ICI : Changer la clé étrangère pour éviter le conflit
+    # Soit on utilise 'admins' (recommandé)
+    created_by_admin = db.Column(db.Integer, db.ForeignKey('admins.id'), nullable=True)
+    # Soit on utilise 'users'
+    created_by_user = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
     created_at = db.Column(db.DateTime, default=get_utc_now)
     updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
     
@@ -289,15 +304,17 @@ class Event(db.Model):
             'id': self.id,
             'title': self.title,
             'description': self.description,
-            'event_date': self.event_date.isoformat() if self.event_date else None,
-            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'date': self.date.isoformat() if self.date else None,
+            'time': self.time,
             'location': self.location,
-            'category': self.category,
-            'status': self.status,
+            'imam': self.imam,
+            'type': self.type,
+            'archived': self.archived,
             'image_url': self.image_url,
             'max_participants': self.max_participants,
             'current_participants': self.current_participants,
-            'created_by': self.created_by,
+            'created_by_admin': self.created_by_admin,
+            'created_by_user': self.created_by_user,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
     
@@ -309,7 +326,6 @@ class Event(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-        
 
 class Error(db.Model):
     __tablename__ = 'errors'
