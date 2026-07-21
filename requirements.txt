@@ -15,3 +15,4 @@ Flask-Migrate==4.0.5
 eventlet==0.36.1
 PyMySQL==1.1.1
 psycopg2-binary==2.9.9
+sendgrid==6.11.0

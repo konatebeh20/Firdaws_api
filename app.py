@@ -11,6 +11,13 @@ from config.constant import DevelopmentConfig, ProductionConfig
 from config.db import db
 from logger.logger_config import get_logger
 
+# Importer tous les modèles pour qu'ils soient enregistrés avec SQLAlchemy
+from model.firdaws_db import (
+    User, Admin, Document, Quiz, Event, Error, Info,
+    Mail, Notification, Reading, Training, Video, Khutba,
+    ResetToken, FirewallLog, BlockedIP, Dons, MosqueLife
+)
+
 # ========== IMPORT DES RESSOURCES ==========
 from resources.admin_auth import AuthApi
 from resources.admin import AdminsApi
@@ -33,6 +40,10 @@ from resources.contact import ContactApi
 from resources.helpers import SendEmail, SendPush, Contact
 from resources.dons import DonsAPI
 from resources.quiz import QuizApi
+from resources.mosque_life import MosqueLifeApi
+from resources.mail import ContactMailApi
+
+from resources.reset_password import ForgotPasswordApi, ResetPasswordConfirmApi
 
 # Conflit résolu : conservation de l'import requis
 from helpers.auth_helper import token_required, admin_required, superadmin_required
@@ -152,6 +163,18 @@ api.add_resource(Contact, '/api/contact_simple', endpoint='contact_simple', meth
 # DONS
 api.add_resource(DonsAPI, '/api/dons', '/api/dons/<int:item_id>', '/api/dons/<string:route>', '/api/dons/<string:route>/<int:item_id>', endpoint='dons', methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 
+# VIE ACTIVE DE LA MOSQUÉE (Actualités)
+api.add_resource(MosqueLifeApi, '/api/mosque-life', '/api/mosque-life/<int:item_id>', '/api/mosque-life/<string:route>', '/api/mosque-life/<string:route>/<int:item_id>', endpoint='mosque_life', methods=['GET', 'POST', 'PUT', 'DELETE'])
+
+# EMAIL DE CONTACT
+api.add_resource(ContactMailApi, '/api/mail/contact', endpoint='mail_contact', methods=['POST'])
+
+# ForgetPasword
+api.add_resource(ForgotPasswordApi, '/api/auth/forgot-password', '/api/auth/forgot-password/<string:route>', endpoint='forgot_password')
+api.add_resource(ResetPasswordConfirmApi, '/api/auth/reset-password/confirm/<string:token>', endpoint='reset_password_confirm')
+
+
+
 
 # ========== ROUTES FRONTEND ==========
 @app.route(BASE_URL + '/')
@@ -239,6 +262,13 @@ def seed_default_admins():
 
 if __name__ == '__main__':
     with app.app_context():
+        admin = Admin.query.filter_by(email="admin@firdaws-banco.org").first()
+
+        if admin:
+            admin.set_password("nouveau_mot_de_passe")
+            db.session.commit()
+            print("✅ Mot de passe réinitialisé !")
+
         seed_default_admins()
         logger.info("Base de données initialisée")
 
@@ -253,5 +283,5 @@ if __name__ == '__main__':
     print("WebSocket disponible sur ws://127.0.0.1:5000")
     print("="*50 + "\n")
 
-    socketio.run(app, debug=app.config['DEBUG'], host="0.0.0.0", port=5000)
+    socketio.run(app, debug=app.config['DEBUG'], host="0.0.0.0", port=5000, allow_unsafe_werkzeug=True)
 

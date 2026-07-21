@@ -1,12 +1,13 @@
-from functools import wraps
-from flask import request, current_app
 import jwt
 import bcrypt
-from datetime import datetime, timedelta, timezone
 import secrets
-
-from model.firdaws_db import Admin, User, ResetToken
+from config.db import db
+from functools import wraps
+from flask import request, current_app
 from logger.logger_config import get_logger
+from datetime import datetime, timedelta, timezone
+from model.firdaws_db import Admin, User, ResetToken
+
 
 logger = get_logger()
 
@@ -172,3 +173,144 @@ class AuthHelper:
             errors['password'] = "Le mot de passe doit avoir au moins 8 caractères"
 
         return errors
+
+
+def ForgotPassword():
+    """
+    Réinitialise le mot de passe d'un admin ou d'un utilisateur
+    """
+    try:
+        data = request.get_json() or {}
+        email = data.get('email')
+        role = data.get('role', 'admin')
+        new_password = data.get('new_password')  # Optionnel: si on fournit un nouveau mot de passe
+
+        if not email:
+            return {'status': 'error', 'message': 'Email requis'}, 400
+
+        # Rechercher selon le rôle
+        if role == 'admin':
+            user = Admin.query.filter_by(email=email).first()
+            if not user:
+                return {'status': 'error', 'message': 'Aucun administrateur trouvé avec cet email'}, 404
+        else:
+            user = User.query.filter_by(email=email).first()
+            if not user:
+                return {'status': 'error', 'message': 'Aucun utilisateur trouvé avec cet email'}, 404
+
+        # Générer un nouveau mot de passe
+        if not new_password:
+            new_password = secrets.token_urlsafe(10)
+
+        # Hacher le nouveau mot de passe
+        user.set_password(new_password)
+        db.session.commit()
+
+        return {
+            'status': 'success',
+            'message': f'Mot de passe réinitialisé avec succès pour {email}',
+            'role': role,
+            'new_password': new_password  # À supprimer en production (envoyer par email)
+        }, 200
+
+    except Exception as e:
+        db.session.rollback()
+        return {'status': 'error', 'message': str(e)}, 500
+
+
+def ResetPasswordWithToken():
+    """
+    Réinitialise le mot de passe avec un token de réinitialisation
+    """
+    try:
+        data = request.get_json() or {}
+        token = data.get('token')
+        new_password = data.get('new_password')
+        email = data.get('email')
+
+        if not token or not new_password or not email:
+            return {'status': 'error', 'message': 'Token, email et nouveau mot de passe requis'}, 400
+
+        # Vérifier le token
+        reset_token = ResetToken.query.filter_by(token=token).first()
+        if not reset_token:
+            return {'status': 'error', 'message': 'Token invalide'}, 400
+
+        if reset_token.used:
+            return {'status': 'error', 'message': 'Ce token a déjà été utilisé'}, 400
+
+        if reset_token.expires_at < datetime.utcnow():
+            return {'status': 'error', 'message': 'Ce token a expiré'}, 400
+
+        # Trouver l'utilisateur (admin ou user)
+        admin = Admin.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
+
+        if admin:
+            admin.set_password(new_password)
+            db.session.commit()
+        elif user:
+            user.set_password(new_password)
+            db.session.commit()
+        else:
+            return {'status': 'error', 'message': 'Utilisateur non trouvé'}, 404
+
+        # Marquer le token comme utilisé
+        reset_token.used = True
+        db.session.commit()
+
+        return {
+            'status': 'success',
+            'message': 'Mot de passe réinitialisé avec succès'
+        }, 200
+
+    except Exception as e:
+        db.session.rollback()
+        return {'status': 'error', 'message': str(e)}, 500
+
+
+def GenerateResetToken(email, role='admin'):
+    """
+    Génère un token de réinitialisation pour un admin ou un utilisateur
+    """
+    try:
+        if role == 'admin':
+            user = Admin.query.filter_by(email=email).first()
+        else:
+            user = User.query.filter_by(email=email).first()
+
+        if not user:
+            return {'status': 'error', 'message': 'Utilisateur non trouvé'}, 404
+
+        # Supprimer les anciens tokens non utilisés
+        ResetToken.query.filter_by(admin_id=user.id, used=False).delete()
+
+        # Générer un nouveau token
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(hours=24)
+
+        reset_token = ResetToken(
+            admin_id=user.id if role == 'admin' else None,
+            token=token,
+            expires_at=expires_at,
+            used=False
+        )
+
+        db.session.add(reset_token)
+        db.session.commit()
+
+        # TODO: Envoyer l'email avec le lien
+        reset_link = f"http://localhost:4200/reset-password/confirm?token={token}&email={email}"
+        print(f"🔗 Lien de réinitialisation: {reset_link}")
+        print(f"📝 Token: {token}")
+
+        return {
+            'status': 'success',
+            'message': 'Email de réinitialisation envoyé',
+            'reset_link': reset_link,  # Pour test (à supprimer en prod)
+            'token': token  # Pour test (à supprimer en prod)
+        }, 200
+
+    except Exception as e:
+        db.session.rollback()
+        return {'status': 'error', 'message': str(e)}, 500

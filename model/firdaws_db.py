@@ -161,7 +161,7 @@ class Document(db.Model):
     created_at = db.Column(db.DateTime, default=get_utc_now)
     
     # Relation : Un document parent liste ses quiz enfants
-    created_by = db.Column(db.Integer, nullable=True)
+    # created_by = db.Column(db.Integer, nullable=True)
     # quizzes = db.relationship('Quiz', backref='associated_document', lazy=True)
     
     def to_dict(self):
@@ -369,6 +369,7 @@ class Info(db.Model):
     type = db.Column(db.String(50))
     priority = db.Column(db.String(20), default='normal')
     publish_date = db.Column(db.DateTime)
+    event_date = db.Column(db.DateTime, nullable=True)
     expire_date = db.Column(db.DateTime)
 
     created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
@@ -386,7 +387,11 @@ class Info(db.Model):
             'is_published': self.status == 'published',
             'archived': self.status == 'archived',
             'publish_date': self.publish_date.isoformat() if self.publish_date else None,
+            'event_date': self.event_date.isoformat() if self.event_date else None,
+            'expire_date': self.expire_date.isoformat() if self.expire_date else None,
+            'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
     
     def save(self):
@@ -649,6 +654,7 @@ class ResetToken(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     admin_id = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     token = db.Column(db.String(500), unique=True, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
@@ -704,3 +710,47 @@ class BlockedIP(db.Model):
             'expires_at': self.expires_at.isoformat(),
             'expires_in': str(self.expires_at - get_utc_now())
         }
+
+
+class MosqueLife(db.Model):
+    """Modèle pour la vie active de la mosquée (Actualités)"""
+    __tablename__ = 'mosque_life'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), default='general')
+    image_url = db.Column(db.String(500))
+    date = db.Column(db.Date, nullable=False)
+    location = db.Column(db.String(200))
+    status = db.Column(db.String(20), default='published')
+    archived = db.Column(db.Boolean, default=False)
+    
+    created_by = db.Column(db.Integer, db.ForeignKey('admins.id'))
+    created_at = db.Column(db.DateTime, default=get_utc_now)
+    updated_at = db.Column(db.DateTime, default=get_utc_now, onupdate=get_utc_now)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'content': self.content,
+            'category': self.category,
+            'image_url': self.image_url,
+            'date': self.date.isoformat() if self.date else None,
+            'location': self.location,
+            'status': self.status,
+            'archived': self.archived,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+    
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        return self
+    
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()

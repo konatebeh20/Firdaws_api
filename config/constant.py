@@ -1,5 +1,10 @@
 import os
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis config.env et .env
+load_dotenv('config.env')
+load_dotenv('.env')
 
 # ========== ENVIRONNEMENT ==========
 FLASK_ENV = os.environ.get('FLASK_ENV', 'development').lower()
@@ -56,18 +61,15 @@ DEFAULT_SQLITE_DB_URI = f"sqlite:///{DEFAULT_SQLITE_DB.replace(chr(92), '/')}"
 # ========== CHOIX DE LA BASE DE DONNÉES ==========
 # Priorité : Variable d'environnement > Fallback local
 
-# ========== BASE DE DONNÉES MySQL (Xampp) - directement configuré ==========
-DB_HOST = 'localhost'
-DB_PORT = 3306
-DB_USER = 'root'
-DB_PASSWORD = ''
-DB_NAME = 'firdaws_db'
+# ========== BASE DE DONNÉES ==========
+DB_HOST = os.environ.get('DB_HOST', 'localhost')
+DB_PORT = int(os.environ.get('DB_PORT', 3306))
+DB_USER = os.environ.get('DB_USER', 'root')
+DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
+DB_NAME = os.environ.get('DB_NAME', 'firdaws_db')
 
-# FORCER MySQL Xampp - ignorer les autres configurations
-LIEN_BASE_DE_DONNEES = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-# LIEN_BASE_DE_DONNEES = 'mysql+pymysql://root:@localhost/mapxpress'
-
-# C'EST TOUT ! LIEN_BASE_DE_DONNEES est maintenant défini
+DEFAULT_SQL_DB_URL = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+LIEN_BASE_DE_DONNEES = os.environ.get('LIEN_BASE_DE_DONNEES') or os.environ.get('DATABASE_URL') or DEFAULT_SQL_DB_URL
 
 SQL_DB_URL = LIEN_BASE_DE_DONNEES
 SQLALCHEMY_TRACK_MODIFICATIONS = False

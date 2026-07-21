@@ -29,6 +29,7 @@ class InfoApi(Resource):
     def get(self, route=None, item_id=None):
         try:
             current_admin = self.get_current_admin()
+            InfoHelper.archive_expired_infos()
             
             # 1. GET /api/infos/<int:item_id>
             if item_id and not route:
@@ -99,17 +100,37 @@ class InfoApi(Resource):
             if not info:
                 return {'message': 'Information non trouvée'}, 404
             data = request.get_json()
+
             if route == 'archive':
                 info.status = 'archived' if data.get('archived', True) else 'published'
             else:
+                if info.status == 'archived':
+                    return {'message': 'Information archivée non modifiable'}, 400
+
                 if 'title' in data:
                     info.title = data['title']
+                
                 if 'content' in data:
                     info.content = data['content']
+                
+                if 'priority' in data:
+                    info.priority = data['priority']
+                
                 if 'category' in data:
                     info.priority = data['category']
+                
+                if 'status' in data:
+                    info.status = data['status']
+
                 if 'is_published' in data:
                     info.status = 'published' if data['is_published'] else 'draft'
+                
+                if 'publish_date' in data:
+                    info.publish_date = InfoHelper._parse_datetime(data['publish_date'])
+                
+                if 'event_date' in data:
+                    info.event_date = InfoHelper._parse_datetime(data['event_date'])
+                    
             db.session.commit()
             return {'data': info.to_dict()}, 200
         except Exception as e:

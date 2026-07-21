@@ -21,7 +21,7 @@ class EventListApi(Resource):
         try:
             events = Event.query.filter_by(archived=False)\
                           .order_by(Event.date.desc()).all()
-            return {'events': [e.to_dict() for e in events], 'count': len(events)}, 200
+            return {'data': [e.to_dict() for e in events], 'count': len(events)}, 200
         except Exception as e:
             logger.error(f"GET /events: {e}")
             return {'message': 'Erreur lors de la récupération'}, 500
