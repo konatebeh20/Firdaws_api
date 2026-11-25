@@ -3,7 +3,8 @@
 ## 📋 RÉSUMÉ DES CORRECTIONS EFFECTUÉES
 
 ### 1. ✅ config.env corrigé
-- **Avant** : `DATABASE_URL=postgresql://postgres:firdaws_pass@localhost:5433/firdaws_db`
+<!-- - **Avant** : `DATABASE_URL=postgresql://postgres:firdaws_pass@localhost:5433/firdaws_db` -->
+- **Avant** : `DATABASE_URL=postgresql://postgres:firdaws_pass@localhost:5432/firdaws_db`
 - **Après** : `DATABASE_URL=postgresql://postgres:firdaws_pass@db:5432/firdaws_db`
 - **Pourquoi** : Dans Docker, les conteneurs communiquent par nom de service, pas par localhost
 
@@ -88,7 +89,8 @@ SELECT * FROM admins;
 
 ### 1. Connexion DBeaver
 - **Host** : `localhost`
-- **Port** : `5433`
+<!-- - **Port** : `5433` -->
+- **Port** : `5432`
 - **Database** : `firdaws_db`
 - **Username** : `postgres`
 - **Password** : `firdaws_pass`
@@ -154,7 +156,8 @@ docker exec -it firdaws_api_backend_1 flask db current
 Pour le projet Firdaws_api (Mosquée) :
 - **Utiliser uniquement** : `D:\Firdaws_api\docker-compose.yml`
 - **Commande** : `docker-compose up -d` (depuis `D:\Firdaws_api`)
-- **Conteneur** : `postgres_db` (port 5433)
+<!-- - **Conteneur** : `postgres_db` (port 5433) -->
+- **Conteneur** : `postgres_db` (port 5432)
 - **Base** : `firdaws_db`
 
 ---

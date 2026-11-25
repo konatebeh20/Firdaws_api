@@ -10,7 +10,8 @@ services:
     environment:
       SECRET_KEY: dev-secret-key-2026
       JWT_SECRET_KEY: dev-jwt-secret-key-2026
-      DATABASE_URL: postgresql://postgres:admin123@host.docker.internal:5433/postgres
+      # DATABASE_URL: postgresql://postgres:admin123@host.docker.internal:5433/postgres
+      DATABASE_URL: postgresql://postgres:admin123@host.docker.internal:5432/postgres
     volumes:
       - .:/app
     restart: unless-stopped

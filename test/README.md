@@ -16,7 +16,8 @@ Ce dossier contient des scripts pour initialiser la base PostgreSQL utilisée pa
 
    python test/init_db.py
 
-4. Vérifier dans DBeaver (host=localhost port=5433 database=firdaws_db user=postgres)
+<!-- 4. Vérifier dans DBeaver (host=localhost port=5433 database=firdaws_db user=postgres) -->
+4. Vérifier dans DBeaver (host=localhost port=5432 database=firdaws_db user=postgres)
 
 Flask-Migrate (si tu veux utiliser les migrations) :
 
